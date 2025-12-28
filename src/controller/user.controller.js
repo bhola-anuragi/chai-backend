@@ -17,7 +17,6 @@ const registerUser = asyncHandler(async (req,res) => {
     // check for user creation
     // return res
 
-
     const {fullname,password, email, username} = req.body
 
     // console.log('username:',username);
@@ -142,8 +141,8 @@ const loginUser = asyncHandler( async (req,res) => {
 const logoutUser = asyncHandler(async(req,res) => {
     await User.findByIdAndUpdate(
         req.user._id,{
-            $set:{
-                refreshToken:undefined
+            $unset:{
+                refreshToken:1
             }
         },
         {
@@ -308,10 +307,11 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
     if((!username?.trim())){
         throw new ApiError(400,"User is missing")
     }
+    console.log(username)
     const channel = await User.aggregate([
         {
             $match:{
-                username: username
+                username: username?.toLowerCase()
             }
         },
         {
@@ -326,11 +326,12 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
             $lookup:{
                 from:"subscriptions",
                 localField: "_id",
-                foreignField:"subscribers",
+                foreignField:"subscriber",
                 as:"subscribedTo"
             }
         },
-        {
+        { 
+            $addFields:{
             subscribersCount:{
                 $size:"$subscribers"
             },
@@ -345,6 +346,7 @@ const getUserChannelProfile = asyncHandler(async(req,res) => {
                     else:false
                 }
             }
+        }
         },
         {
             $project:{
@@ -375,6 +377,8 @@ const getWatchHistory = asyncHandler(async(req,res) => {
             $match:{
                 _id:new mongoose.Types.ObjectId(req.user._id)
             },
+        },
+        {
             $lookup:{
                 from:"videos",
                 localField:"watchHistory",
@@ -409,7 +413,7 @@ const getWatchHistory = asyncHandler(async(req,res) => {
             }
         }
     ])
-
+    console.log(res)
     return res
     .status(200)
     .json(new ApiResponse(200,user[0].watchHistory),"watch History fetched suceessfully")
