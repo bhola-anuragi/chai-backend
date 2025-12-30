@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
+// import videoRouter from ''
 
 const app = express()
 
@@ -18,8 +19,11 @@ app.use(cookieParser())
 // routes import 
 
 import userRouter from './routes/user.routes.js'
+import videoRouter from './routes/video.routes.js'
+
 // routes declaration 
 app.use('/api/v1/users', userRouter)
+app.use("/api/v1/videos", videoRouter)
 const port = process.env.PORT || 5000
 
 export {app}
