@@ -8,8 +8,54 @@ import {uploadOnCloudinary} from "../utils/cloudinary.js"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
+    // const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
     //TODO: get all videos based on query, sort, pagination
+    const userId = req.user._id
+    // console.log(userId._id)
+    if(!userId){
+        throw new ApiError(400,"user not found")
+    }
+    const allVideos = await Video.aggregate([
+        {
+            $match:{
+                owner:userId
+            }
+        },
+        {
+            $lookup:{
+                from:"users",
+                localField:"owner",
+                foreignField:"_id",
+                as:"videos"
+            }
+        },
+        {
+            $unwind:"$videos"
+        },
+        {
+            $project:{
+                title:1,
+                thumbnail:1,
+                description:1,
+                owner:1,
+                isPublished:1,
+                views:1,
+                duration:1,
+                videoFile:1
+            }
+        }
+    ])
+
+    // console.log(channel)
+    if(!allVideos){
+        throw new ApiError(400,"No video found")
+    }
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,allVideos,"Video found successfully"))
+
+    
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -64,23 +110,59 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: get video by id
-    if(videoId){
+    //TODO: get video by id 
+    if(!videoId){
         throw new ApiError(400,"videoId is required")
     }
+    const video = await Video.findById(videoId)
+    console.log('video is:',video)
 
-    
 })
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    const {title, description} = req.body
+    const thumbnailLocalPath = req.files?.thumbnail[0].path
+    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath)
+    if(!videoId){
+        throw new ApiError(400,"Video not found")
+    }
+    if(!title && !description){
+        console.log("not defiln")
+        throw new ApiError(400,"title or description not found")
+    }
     //TODO: update video details like title, description, thumbnail
+    const video = await Video.findByIdAndUpdate(
+        videoId,{
+            $set:{
+                title:title,
+                description:description,
+                thumbnail:thumbnail
+            }
+        
+        },
+        {
+            new:true
+        }
+    )
 
+    console.log(video)
+    return res
+    .status(200)
+    .json(new ApiResponse(200,video,"Video details updated"))
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: delete video
+    if(!videoId){
+        throw new ApiError(400,"Video not found")
+    }
+
+    const video = await Video.findByIdAndDelete(videoId)
+    return res
+    .status(200)
+    .json(new ApiResponse(200,video,"Video deleted successfully"))
 })
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
